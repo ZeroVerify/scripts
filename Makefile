@@ -1,7 +1,7 @@
 REGION  ?= us-east-1
 BUCKET  ?= zeroverify-artifacts
 
-.PHONY: issue-credential verify-credential
+.PHONY: issue-credential verify-credential inspect-bitstring
 
 generate-issuer-keys:
 	@echo "WARNING: This will overwrite existing private keys in Secrets Manager."
@@ -9,6 +9,9 @@ generate-issuer-keys:
 	cd scripts/generate-issuer-keys && go run . \
 		--region $(REGION) \
 		--bucket $(BUCKET)
+
+inspect-bitstring:
+	./scripts/inspect-bitstring.sh s3://$(BUCKET)/bitstring/v1/bitstring.gz
 
 issue-credential:
 	./scripts/issue-credential.sh | tee /tmp/credential.json | jq .
