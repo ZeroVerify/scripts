@@ -1,7 +1,8 @@
-REGION  ?= us-east-1
-BUCKET  ?= zeroverify-artifacts
+REGION       ?= us-east-1
+BUCKET       ?= zeroverify-artifacts
+ARTIFACTS_URL ?= https://artifacts.api.zeroverify.net
 
-.PHONY: issue-credential verify-credential inspect-bitstring
+.PHONY: issue-credential verify-credential inspect-bitstring revoke-credential
 
 generate-issuer-keys:
 	@echo "WARNING: This will overwrite existing private keys in Secrets Manager."
@@ -19,11 +20,18 @@ issue-credential:
 verify-credential:
 	cd scripts/verify-credential && go run . \
 		--credential $(CREDENTIAL) \
-		--public-key-hex $(PUBLIC_KEY_HEX)
+		--public-key-hex $$(curl -sf $(ARTIFACTS_URL)/issuer/public-key.json | jq -r .publicKeyHex)
+
+revoke-credential:
+	cd scripts/revoke-credential && npm run revoke -- $(CREDENTIAL)
 
 .PHONY: test
 test:
 	./scripts/issue-credential.sh | tee /tmp/credential.json | jq .
 	cd scripts/verify-credential && go run . \
 		--credential /tmp/credential.json \
-		--public-key-hex $$(aws s3 cp s3://$(BUCKET)/issuer/public-key.json - | jq -r .publicKeyHex)
+		--public-key-hex $$(curl -sf $(ARTIFACTS_URL)/issuer/public-key.json | jq -r .publicKeyHex)
+	@echo ""
+	@printf "Credential issued and verified. Press Enter to revoke..."; read ans < /dev/tty
+	@echo ""
+	cd scripts/revoke-credential && npm run revoke
